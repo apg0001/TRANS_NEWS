@@ -1,6 +1,7 @@
 from transformers import MarianMTModel, MarianTokenizer
-from typing import Optional
+from typing import Optional, List
 import torch
+import re
 
 
 class HuggingFaceTranslateService:
@@ -27,17 +28,34 @@ class HuggingFaceTranslateService:
             self.tokenizer = None
             return False
     
-    def translate_ko_to_en(self, text: str) -> str:
-        """한국어를 영어로 번역"""
+    def _split_into_paragraphs(self, text: str) -> List[str]:
+        """텍스트를 문단 단위로 분할"""
         if not text:
-            return text
+            return []
+        
+        # 줄바꿈을 기준으로 문단 분할
+        paragraphs = text.split('\n')
+        
+        # 빈 문단 제거 및 공백 정리
+        cleaned_paragraphs = []
+        for paragraph in paragraphs:
+            paragraph = paragraph.strip()
+            if paragraph:  # 빈 문단이 아닌 경우만 추가
+                cleaned_paragraphs.append(paragraph)
+        
+        return cleaned_paragraphs
+    
+    def _translate_paragraph(self, paragraph: str) -> str:
+        """단일 문단을 번역"""
+        if not paragraph:
+            return paragraph
 
         if not self._ensure_loaded():
-            return text
+            return paragraph
         
         try:
             # 텍스트를 토큰화
-            inputs = self.tokenizer(text, return_tensors="pt", padding=True, truncation=True, max_length=512)
+            inputs = self.tokenizer(paragraph, return_tensors="pt", padding=True, truncation=True, max_length=512)
             
             # 번역 수행
             with torch.no_grad():
@@ -48,11 +66,31 @@ class HuggingFaceTranslateService:
             return translated_text.strip()
             
         except Exception as e:
-            print(f"Translation error: {e}")
+            print(f"Paragraph translation error: {e}")
+            return paragraph
+    
+    def translate_ko_to_en(self, text: str) -> str:
+        """한국어를 영어로 번역 (문단별)"""
+        if not text:
             return text
+
+        # 문단으로 분할
+        paragraphs = self._split_into_paragraphs(text)
+        
+        if not paragraphs:
+            return text
+        
+        # 각 문단을 개별적으로 번역
+        translated_paragraphs = []
+        for paragraph in paragraphs:
+            translated_paragraph = self._translate_paragraph(paragraph)
+            translated_paragraphs.append(translated_paragraph)
+        
+        # 번역된 문단들을 다시 결합
+        return '\n'.join(translated_paragraphs)
     
     def translate_en_to_ko(self, text: str) -> str:
-        """영어를 한국어로 번역 (역방향 모델 필요)"""
+        """영어를 한국어로 번역 (문단별, 역방향 모델 필요)"""
         # 역방향 번역을 위한 모델이 필요하지만, 일단 원본 반환
         # 실제로는 en-ko 모델을 별도로 로드해야 함
         return text
