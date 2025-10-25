@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>검색 결과 - TransNews</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+  <script>
+    let isLoading = false;
+
+    function showLoading(message = '처리 중...') {
+      if (isLoading) return;
+      isLoading = true;
+      
+      const overlay = document.createElement('div');
+      overlay.className = 'loading-overlay';
+      overlay.id = 'loading-overlay';
+      overlay.innerHTML = `
+        <div class="loading-modal">
+          <div class="spinner"></div>
+          <h3>${message}</h3>
+          <p>잠시만 기다려주세요...</p>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+    }
+
+    function hideLoading() {
+      const overlay = document.getElementById('loading-overlay');
+      if (overlay) {
+        overlay.remove();
+      }
+      isLoading = false;
+    }
+
+    async function openArticle(url) {
+      if (isLoading) return;
+      
+      const lang = document.querySelector('input[name="lang"]:checked').value;
+      showLoading('기사 분석 중...');
+      
+      try {
+        const params = new URLSearchParams({ url, lang });
+        const res = await fetch(`/api/article?${params.toString()}`);
+        if (!res.ok) {
+          throw new Error('기사 로딩 실패');
+        }
+        
+        const data = await res.json();
+        displayArticleDetail(data, lang);
+      } catch (error) {
+        alert('기사 로딩 중 오류가 발생했습니다: ' + error.message);
+      } finally {
+        hideLoading();
+      }
+    }
+
+    function displayArticleDetail(data, lang) {
+      const detailSection = document.getElementById('article-detail');
+      const isEn = (lang === 'en');
+      
+      document.getElementById('detail-url').textContent = data.url;
+      document.getElementById('detail-url').href = data.url;
+      document.getElementById('detail-original').textContent = isEn ? (data.original_en || '') : data.original_ko;
+      document.getElementById('detail-summary').textContent = isEn ? (data.summary_en || '') : data.summary_ko;
+      
+      detailSection.style.display = 'block';
+      detailSection.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    document.addEventListener('click', (e) => {
+      if (e.target.matches('button.btn-open')) {
+        e.preventDefault();
+        openArticle(e.target.dataset.url);
+      }
+    });
+
+    // 뒤로가기 버튼
+    function goBack() {
+      window.history.back();
+    }
+  </script>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <h1>검색 결과</h1>
+          <p id="search-info">키워드: <span id="search-keywords"></span></p>
+        </div>
+        <button onclick="goBack()" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);">
+          ← 뒤로가기
+        </button>
+      </div>
+    </header>
+
+    <!-- Language Toggle -->
+    <section class="search-section">
+      <div class="form-group">
+        <label>표시 언어</label>
+        <div class="language-toggle">
+          <label>
+            <input type="radio" name="lang" value="ko" checked />
+            <span>한국어</span>
+          </label>
+          <label>
+            <input type="radio" name="lang" value="en" />
+            <span>English</span>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <!-- Results Section -->
+    <section id="results-section" class="results-section">
+      <div class="results-header">
+        <h2>검색 결과</h2>
+        <div class="results-count" id="results-count"></div>
+      </div>
+      <div id="results-list"></div>
+    </section>
+
+    <!-- Article Detail Section -->
+    <section id="article-detail" class="article-detail hidden">
+      <div class="article-header">
+        <h2>기사 상세</h2>
+        <div>
+          <strong>URL:</strong> 
+          <a id="detail-url" href="#" target="_blank" class="article-url"></a>
+        </div>
+      </div>
+      
+      <div class="content-section">
+        <h3>원문</h3>
+        <div id="detail-original" class="content-text"></div>
+      </div>
+      
+      <div class="content-section">
+        <h3>요약</h3>
+        <div id="detail-summary" class="content-text"></div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // URL 파라미터에서 검색 결과 로드
+    async function loadSearchResults() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const keywords = urlParams.getAll('keywords');
+      const limit = urlParams.get('limit') || 10;
+      const lang = urlParams.get('lang') || 'ko';
+      
+      if (keywords.length === 0) {
+        document.getElementById('results-list').innerHTML = '<div class="text-center" style="padding: 40px; color: var(--muted);">검색 키워드가 없습니다.</div>';
+        return;
+      }
+
+      // 검색 정보 표시
+      document.getElementById('search-keywords').textContent = keywords.join(', ');
+      document.querySelector('input[name="lang"][value="' + lang + '"]').checked = true;
+
+      showLoading('검색 결과 로딩 중...');
+      
+      try {
+        const params = new URLSearchParams();
+        keywords.forEach(k => params.append('keywords', k));
+        params.append('limit', limit);
+        params.append('lang', lang);
+        
+        const res = await fetch(`/api/search?${params.toString()}`);
+        if (!res.ok) {
+          throw new Error('검색 실패');
+        }
+        
+        const items = await res.json();
+        displayResults(items);
+      } catch (error) {
+        alert('검색 중 오류가 발생했습니다: ' + error.message);
+        document.getElementById('results-list').innerHTML = '<div class="text-center" style="padding: 40px; color: var(--error);">검색 중 오류가 발생했습니다.</div>';
+      } finally {
+        hideLoading();
+      }
+    }
+
+    function displayResults(items) {
+      const resultsList = document.getElementById('results-list');
+      const resultsCount = document.getElementById('results-count');
+      
+      // 결과 개수 표시
+      resultsCount.textContent = `${items.length}개 결과`;
+      
+      if (items.length === 0) {
+        resultsList.innerHTML = '<div class="text-center" style="padding: 40px; color: var(--muted);">검색 결과가 없습니다.</div>';
+      } else {
+        resultsList.innerHTML = '';
+        items.forEach((item, index) => {
+          const div = document.createElement('div');
+          div.className = 'news-item';
+          div.innerHTML = `
+            <div class="news-title">
+              <a href="#" data-url="${item.url}">${item.title || '제목 없음'}</a>
+            </div>
+            <div class="news-summary">${item.summary || '요약 없음'}</div>
+            <div class="news-actions">
+              <button class="btn-open" data-url="${item.url}">기사 보기</button>
+            </div>
+          `;
+          resultsList.appendChild(div);
+        });
+      }
+    }
+
+    // 언어 변경 시 다시 검색
+    document.querySelectorAll('input[name="lang"]').forEach(radio => {
+      radio.addEventListener('change', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const keywords = urlParams.getAll('keywords');
+        const limit = urlParams.get('limit') || 10;
+        const lang = radio.value;
+        
+        const newParams = new URLSearchParams();
+        keywords.forEach(k => newParams.append('keywords', k));
+        newParams.append('limit', limit);
+        newParams.append('lang', lang);
+        
+        window.location.href = `/search?${newParams.toString()}`;
+      });
+    });
+
+    // 페이지 로드 시 검색 결과 표시
+    loadSearchResults();
+  </script>
+</body>
+</html>
