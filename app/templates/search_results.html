@@ -33,39 +33,10 @@
       isLoading = false;
     }
 
-    async function openArticle(url) {
-      if (isLoading) return;
-      
+    function openArticle(url) {
       const lang = document.querySelector('input[name="lang"]:checked').value;
-      showLoading('기사 분석 중...');
-      
-      try {
-        const params = new URLSearchParams({ url, lang });
-        const res = await fetch(`/api/article?${params.toString()}`);
-        if (!res.ok) {
-          throw new Error('기사 로딩 실패');
-        }
-        
-        const data = await res.json();
-        displayArticleDetail(data, lang);
-      } catch (error) {
-        alert('기사 로딩 중 오류가 발생했습니다: ' + error.message);
-      } finally {
-        hideLoading();
-      }
-    }
-
-    function displayArticleDetail(data, lang) {
-      const detailSection = document.getElementById('article-detail');
-      const isEn = (lang === 'en');
-      
-      document.getElementById('detail-url').textContent = data.url;
-      document.getElementById('detail-url').href = data.url;
-      document.getElementById('detail-original').textContent = isEn ? (data.original_en || '') : data.original_ko;
-      document.getElementById('detail-summary').textContent = isEn ? (data.summary_en || '') : data.summary_ko;
-      
-      detailSection.style.display = 'block';
-      detailSection.scrollIntoView({ behavior: 'smooth' });
+      const params = new URLSearchParams({ url, lang });
+      window.open(`/article?${params.toString()}`, '_blank');
     }
 
     document.addEventListener('click', (e) => {
@@ -122,26 +93,6 @@
       <div id="results-list"></div>
     </section>
 
-    <!-- Article Detail Section -->
-    <section id="article-detail" class="article-detail hidden">
-      <div class="article-header">
-        <h2>기사 상세</h2>
-        <div>
-          <strong>URL:</strong> 
-          <a id="detail-url" href="#" target="_blank" class="article-url"></a>
-        </div>
-      </div>
-      
-      <div class="content-section">
-        <h3>원문</h3>
-        <div id="detail-original" class="content-text"></div>
-      </div>
-      
-      <div class="content-section">
-        <h3>요약</h3>
-        <div id="detail-summary" class="content-text"></div>
-      </div>
-    </section>
   </div>
 
   <script>

@@ -16,3 +16,11 @@ class ArticleDetail(BaseModel):
     summary_en: Optional[str] = None
 
 
+class EmailRequest(BaseModel):
+    email: str
+    title: str
+    url: str
+    original: str
+    summary: str
+
+

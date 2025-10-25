@@ -17,10 +17,12 @@ app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), na
 from .routers.search import router as search_router
 from .routers.article import router as article_router
 from .routers.translate import router as translate_router
+from .routers.email import router as email_router
 
 app.include_router(search_router, prefix="/api", tags=["search"]) 
 app.include_router(article_router, prefix="/api", tags=["article"])
-app.include_router(translate_router, prefix="/api", tags=["translate"]) 
+app.include_router(translate_router, prefix="/api", tags=["translate"])
+app.include_router(email_router, prefix="/api", tags=["email"]) 
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -33,3 +35,9 @@ def index(request: Request):
 def search_results(request: Request):
     # 검색 결과 페이지 렌더링
     return templates.TemplateResponse("search_results.html", {"request": request})
+
+
+@app.get("/article", response_class=HTMLResponse)
+def article_detail(request: Request):
+    # 기사 상세 페이지 렌더링
+    return templates.TemplateResponse("article_detail.html", {"request": request})
