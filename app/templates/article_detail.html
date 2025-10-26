@@ -1,234 +1,281 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ko">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>기사 상세 - TransNews</title>
-  <link rel="stylesheet" href="/static/styles.css" />
-  <script>
-    let isLoading = false;
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>기사 상세 - TransNews</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+    <script>
+      let isLoading = false;
 
-    function showLoading(message = '처리 중...') {
-      if (isLoading) return;
-      isLoading = true;
-      
-      const overlay = document.createElement('div');
-      overlay.className = 'loading-overlay';
-      overlay.id = 'loading-overlay';
-      overlay.innerHTML = `
+      function showLoading(message = "처리 중...") {
+        if (isLoading) return;
+        isLoading = true;
+
+        const overlay = document.createElement("div");
+        overlay.className = "loading-overlay";
+        overlay.id = "loading-overlay";
+        overlay.innerHTML = `
         <div class="loading-modal">
           <div class="spinner"></div>
           <h3>${message}</h3>
           <p>잠시만 기다려주세요...</p>
         </div>
       `;
-      document.body.appendChild(overlay);
-    }
-
-    function hideLoading() {
-      const overlay = document.getElementById('loading-overlay');
-      if (overlay) {
-        overlay.remove();
-      }
-      isLoading = false;
-    }
-
-    async function sendEmail() {
-      const email = document.getElementById('email').value.trim();
-      if (!email) {
-        alert('이메일을 입력해주세요.');
-        return;
+        document.body.appendChild(overlay);
       }
 
-      if (!isValidEmail(email)) {
-        alert('올바른 이메일 형식을 입력해주세요.');
-        return;
+      function hideLoading() {
+        const overlay = document.getElementById("loading-overlay");
+        if (overlay) {
+          overlay.remove();
+        }
+        isLoading = false;
       }
 
-      if (isLoading) return;
-      
-      showLoading('이메일 전송 중...');
-      
-      try {
-        const url = document.getElementById('detail-url').href;
-        const title = document.getElementById('article-title').textContent;
-        const original = document.getElementById('detail-original').textContent;
-        const summary = document.getElementById('detail-summary').textContent;
-        
-        const response = await fetch('/api/email/send', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            email: email,
-            title: title,
-            url: url,
-            original: original,
-            summary: summary
-          })
-        });
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.detail || '이메일 전송 실패');
+      async function sendEmail() {
+        const email = document.getElementById("email").value.trim();
+        if (!email) {
+          alert("이메일을 입력해주세요.");
+          return;
         }
 
-        alert('이메일이 성공적으로 전송되었습니다.');
-        document.getElementById('email').value = '';
-      } catch (error) {
-        alert('이메일 전송 중 오류가 발생했습니다: ' + error.message);
-      } finally {
-        hideLoading();
+        if (!isValidEmail(email)) {
+          alert("올바른 이메일 형식을 입력해주세요.");
+          return;
+        }
+
+        if (isLoading) return;
+
+        showLoading("이메일 전송 중...");
+
+        try {
+          const url = document.getElementById("detail-url").href;
+          const title = document.getElementById("article-title").textContent;
+          // const original = document.getElementById('detail-original').textContent;
+          // const summary = document.getElementById('detail-summary').textContent;
+          const original = (document.getElementById(
+            "detail-original"
+          ).textContent = isEn ? data.original_en || "" : data.original_ko);
+          const summary = (document.getElementById(
+            "detail-summary"
+          ).textContent = isEn ? data.summary_en || "" : data.summary_ko);
+
+          const response = await fetch("/api/email/send", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              email: email,
+              title: title,
+              url: url,
+              original: original,
+              summary: summary,
+            }),
+          });
+
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || "이메일 전송 실패");
+          }
+
+          alert("이메일이 성공적으로 전송되었습니다.");
+          document.getElementById("email").value = "";
+        } catch (error) {
+          alert("이메일 전송 중 오류가 발생했습니다: " + error.message);
+        } finally {
+          hideLoading();
+        }
       }
-    }
 
-    function isValidEmail(email) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      return emailRegex.test(email);
-    }
+      function isValidEmail(email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+      }
 
-    // 뒤로가기 버튼
-    function goBack() {
-      window.history.back();
-    }
-  </script>
-</head>
-<body>
-  <div class="container">
-    <!-- Header -->
-    <header class="header">
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <div>
-          <h1>기사 상세</h1>
-        </div>
-        <button onclick="goBack()" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);">
-          ← 뒤로가기
-        </button>
-      </div>
-    </header>
-
-    <!-- Language Toggle -->
-    <section class="search-section">
-      <div class="form-group">
-        <label>표시 언어</label>
-        <div class="language-toggle">
-          <label>
-            <input type="radio" name="lang" value="ko" checked />
-            <span>한국어</span>
-          </label>
-          <label>
-            <input type="radio" name="lang" value="en" />
-            <span>English</span>
-          </label>
-        </div>
-      </div>
-    </section>
-
-    <!-- Email Form -->
-    <section class="email-section">
-      <div class="card">
-        <h3>📧 이메일로 기사 전송</h3>
-        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-          <input 
-            type="email" 
-            id="email" 
-            placeholder="이메일 주소를 입력하세요" 
-            style="flex: 1; min-width: 250px; padding: 10px; border: 1px solid #ddd; border-radius: 4px;"
-          />
-          <button 
-            onclick="sendEmail()" 
-            style="padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 4px; cursor: pointer;"
+      // 뒤로가기 버튼
+      function goBack() {
+        window.history.back();
+      }
+    </script>
+  </head>
+  <body>
+    <div class="container">
+      <!-- Header -->
+      <header class="header">
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          "
+        >
+          <div>
+            <h1>기사 상세</h1>
+          </div>
+          <button
+            onclick="goBack()"
+            style="
+              background: rgba(255, 255, 255, 0.2);
+              border: 1px solid rgba(255, 255, 255, 0.3);
+            "
           >
-            전송
+            ← 뒤로가기
           </button>
         </div>
-      </div>
-    </section>
+      </header>
 
-    <!-- Article Detail Section -->
-    <section id="article-detail" class="article-detail">
-      <div class="article-header">
-        <h2 id="article-title">기사 제목</h2>
-        <div>
-          <strong>URL:</strong> 
-          <a id="detail-url" href="#" target="_blank" class="article-url"></a>
+      <!-- Language Toggle -->
+      <section class="search-section">
+        <div class="form-group">
+          <label>표시 언어</label>
+          <div class="language-toggle">
+            <label>
+              <input type="radio" name="lang" value="ko" checked />
+              <span>한국어</span>
+            </label>
+            <label>
+              <input type="radio" name="lang" value="en" />
+              <span>English</span>
+            </label>
+          </div>
         </div>
-      </div>
-      
-      <div class="content-section">
-        <h3>원문</h3>
-        <div id="detail-original" class="content-text"></div>
-      </div>
-      
-      <div class="content-section">
-        <h3>요약</h3>
-        <div id="detail-summary" class="content-text"></div>
-      </div>
-    </section>
-  </div>
+      </section>
 
-  <script>
-    // URL 파라미터에서 기사 정보 로드
-    async function loadArticle() {
-      const urlParams = new URLSearchParams(window.location.search);
-      const url = urlParams.get('url');
-      const lang = urlParams.get('lang') || 'ko';
-      
-      if (!url) {
-        document.getElementById('article-detail').innerHTML = '<div class="text-center" style="padding: 40px; color: var(--muted);">기사 URL이 없습니다.</div>';
-        return;
-      }
+      <!-- Email Form -->
+      <section class="email-section">
+        <div class="card">
+          <h3>📧 이메일로 기사 전송</h3>
+          <div
+            style="
+              display: flex;
+              gap: 10px;
+              align-items: center;
+              flex-wrap: wrap;
+            "
+          >
+            <input
+              type="email"
+              id="email"
+              placeholder="이메일 주소를 입력하세요"
+              style="
+                flex: 1;
+                min-width: 250px;
+                padding: 10px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+              "
+            />
+            <button
+              onclick="sendEmail()"
+              style="
+                padding: 10px 20px;
+                background: var(--primary);
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+              "
+            >
+              전송
+            </button>
+          </div>
+        </div>
+      </section>
 
-      // 언어 설정
-      document.querySelector('input[name="lang"][value="' + lang + '"]').checked = true;
+      <!-- Article Detail Section -->
+      <section id="article-detail" class="article-detail">
+        <div class="article-header">
+          <h2 id="article-title">기사 제목</h2>
+          <div>
+            <strong>URL:</strong>
+            <a id="detail-url" href="#" target="_blank" class="article-url"></a>
+          </div>
+        </div>
 
-      showLoading('기사 분석 중...');
-      
-      try {
-        const params = new URLSearchParams({ url, lang });
-        const res = await fetch(`/api/article?${params.toString()}`);
-        if (!res.ok) {
-          throw new Error('기사 로딩 실패');
-        }
-        
-        const data = await res.json();
-        displayArticle(data, lang);
-      } catch (error) {
-        alert('기사 로딩 중 오류가 발생했습니다: ' + error.message);
-        document.getElementById('article-detail').innerHTML = '<div class="text-center" style="padding: 40px; color: var(--error);">기사 로딩 중 오류가 발생했습니다.</div>';
-      } finally {
-        hideLoading();
-      }
-    }
+        <div class="content-section">
+          <h3>원문</h3>
+          <div id="detail-original" class="content-text"></div>
+        </div>
 
-    function displayArticle(data, lang) {
-      const isEn = (lang === 'en');
-      
-      document.getElementById('article-title').textContent = data.title || '제목 없음';
-      document.getElementById('detail-url').textContent = data.url;
-      document.getElementById('detail-url').href = data.url;
-      document.getElementById('detail-original').textContent = isEn ? (data.original_en || '') : data.original_ko;
-      document.getElementById('detail-summary').textContent = isEn ? (data.summary_en || '') : data.summary_ko;
-    }
+        <div class="content-section">
+          <h3>요약</h3>
+          <div id="detail-summary" class="content-text"></div>
+        </div>
+      </section>
+    </div>
 
-    // 언어 변경 시 다시 로드
-    document.querySelectorAll('input[name="lang"]').forEach(radio => {
-      radio.addEventListener('change', () => {
+    <script>
+      // URL 파라미터에서 기사 정보 로드
+      async function loadArticle() {
         const urlParams = new URLSearchParams(window.location.search);
-        const url = urlParams.get('url');
-        const lang = radio.value;
-        
-        const newParams = new URLSearchParams();
-        newParams.append('url', url);
-        newParams.append('lang', lang);
-        
-        window.location.href = `/article?${newParams.toString()}`;
-      });
-    });
+        const url = urlParams.get("url");
+        const lang = urlParams.get("lang") || "ko";
 
-    // 페이지 로드 시 기사 표시
-    loadArticle();
-  </script>
-</body>
+        if (!url) {
+          document.getElementById("article-detail").innerHTML =
+            '<div class="text-center" style="padding: 40px; color: var(--muted);">기사 URL이 없습니다.</div>';
+          return;
+        }
+
+        // 언어 설정
+        document.querySelector(
+          'input[name="lang"][value="' + lang + '"]'
+        ).checked = true;
+
+        showLoading("기사 분석 중...");
+
+        try {
+          const params = new URLSearchParams({ url, lang });
+          const res = await fetch(`/api/article?${params.toString()}`);
+          if (!res.ok) {
+            throw new Error("기사 로딩 실패");
+          }
+
+          const data = await res.json();
+          displayArticle(data, lang);
+        } catch (error) {
+          alert("기사 로딩 중 오류가 발생했습니다: " + error.message);
+          document.getElementById("article-detail").innerHTML =
+            '<div class="text-center" style="padding: 40px; color: var(--error);">기사 로딩 중 오류가 발생했습니다.</div>';
+        } finally {
+          hideLoading();
+        }
+      }
+
+      function displayArticle(data, lang) {
+        const isEn = lang === "en";
+
+        document.getElementById("article-title").textContent =
+          data.title || "제목 없음";
+        document.getElementById("detail-url").textContent = data.url;
+        document.getElementById("detail-url").href = data.url;
+        document.getElementById("detail-original").textContent = isEn
+          ? data.original_en || ""
+          : data.original_ko;
+        document.getElementById("detail-summary").textContent = isEn
+          ? data.summary_en || ""
+          : data.summary_ko;
+      }
+
+      // 언어 변경 시 다시 로드
+      document.querySelectorAll('input[name="lang"]').forEach((radio) => {
+        radio.addEventListener("change", () => {
+          const urlParams = new URLSearchParams(window.location.search);
+          const url = urlParams.get("url");
+          const lang = radio.value;
+
+          const newParams = new URLSearchParams();
+          newParams.append("url", url);
+          newParams.append("lang", lang);
+
+          window.location.href = `/article?${newParams.toString()}`;
+        });
+      });
+
+      // 페이지 로드 시 기사 표시
+      loadArticle();
+    </script>
+  </body>
 </html>
